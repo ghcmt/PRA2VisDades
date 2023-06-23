@@ -1,0 +1,340 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-05-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+library(readxl)
+library(kableExtra)
+library(stringr)
+```
+
+# Introducció
+## Càrrega de dades
+Comencem carregant els fitxers d'Excel que contenen les dades que ens interessen: les del dataset que hem triat ([La llengua catalana als municipis de Catalunya](https://analisi.transparenciacatalunya.cat/Societat-benestar/-catal-947-La-llengua-catalana-als-municipis-de-Ca/374c-85cu)) i també les dades geogràfiques en format GeoJSON que [hem extret del GitHub GeoStarters](https://github.com/geostarters/dades/blob/master/Municipis_Catalunya_EPSG4326_2019_simplificat.geojson). 
+
+### Dataset
+Des de l'1 de juny, les dades han estat actualitzades i ja no es troben disponibles [a aquesta URL](https://analisi.transparenciacatalunya.cat/Societat-benestar/-catal-947-La-llengua-catalana-als-municipis-de-Ca/374c-85cu). El conjunt de dades original ha estat modificat per una taula on es detalla el municipi, la comarca, l'àmbit territorial i una URL on es pot accedir a un anàlisi a nivell municipal de les dades. És a dir, cada poble compta amb un PDF on s'analitza l'ús del català dins de l'àmbit municipal. Per tant, ara ja no existeix el conjunt de dades com a tal que analitzarem a continuació i que es troba a fitxer `dades-informes-catala947.xlsx`. Aquest fitxer estarà disponible al Github juntament amb aquest arxiu de RMarkdown. 
+
+Així doncs, carreguem l'Excel amb les dades:
+
+```{r echo = TRUE}
+df_catala <- read_xlsx("dades-informes-catala947.xlsx")
+for (i in 1:(nrow(df_catala) + 2)) {
+  df_name <- paste0("df_", i)
+  file_path <- "dades-informes-catala947.xlsx"
+  df <- readxl::read_xlsx(file_path, sheet = i)
+  assign(df_name, df)
+}
+
+```
+
+Mirem l'índex d'aquestes dades, que es troba al full 1 del fitxer Excel:
+
+```{r}
+df_1 <- read_xlsx("dades-informes-catala947.xlsx", sheet = 1, col_names = F)
+df_1
+```
+
+I observem la distribució de les dades en aquests fulls:
+
+```{r echo = TRUE}
+# Creem un dataframe per guardar la informació
+main_df <- data.frame(stringsAsFactors = FALSE)
+
+# Anem full per full agafant la informació rellevant:
+for(i in 2:21) {
+  # Fem una fila per cada dataframe amb el que ens interessa:
+  df_name <- paste0("df_", i)
+  n_rows <- nrow(get(df_name))
+  n_cols <- ncol(get(df_name))
+  new_row <- data.frame(name = df_name, rows = n_rows, cols = n_cols)
+  
+  # Ho afegim al dataframe que hem creat prèviament:
+  main_df <- rbind(main_df, new_row)
+}
+
+# Unim els dos dataframes per fila:
+summary_df <- merge(df_1, main_df, by = 0)
+summary_df <- summary_df %>% 
+  arrange(...2) %>%
+  select(!all_of(c("Row.names", "name"))) %>% 
+  rename(Dades = ...1,
+         Full = ...2,
+         Observacions = rows,
+         Variables = cols)
+
+# Ensenyem el resultat en una taula de Kable:
+kable(summary_df, row.names = F, caption = "Subconjunts de dades del projecte #catala947") |>
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE, position = "center") 
+```
+
+Finalment, reanomenem els dataframes amb un nom que ens doni una idea més acurada del que contenen:
+
+```{r}
+# Reanomenem dataframes segons les dades que contenen:
+df_origen <- df_2
+df_edat_rang <- df_3
+df_dades_municipi_2019 <- df_4
+df_coneixement_catala_1911_2011 <- df_5
+df_coneixement_catala_AT <- df_6
+df_altres_llengues <- df_7
+df_coneixement_cat_AT <- df_8
+df_llengua_inicial_AT <- df_9
+df_us_cat_perc <- df_10
+df_inscripcions_CPNL <- df_11
+df_inscripcions_nivell <- df_12
+df_inscripcions_origen <- df_13
+df_inscripcions_rest_origen <- df_14
+df_parla_cat <- df_15
+df_voluntariat <- df_16
+df_sectors_retolacio <- df_17
+df_sectors_oral <- df_18
+df_ciutats_retolacio <- df_19
+df_ciutats_oral <- df_20
+df_LPL <- df_21
+```
+
+```{r}
+taula_canvis <- data.frame(Descrip = summary_df$Dades, 
+                           Nom_antic = c("df_2", "df_3", "df_4", "df_5", "df_6", 
+                                         "df_7", "df_8", "df_9", "df_10", "df_11", 
+                                         "df_12", "df_13", "df_14", "df_15", "df_16", 
+                                         "df_17", "df_18", "df_19", "df_20", "df_21"),
+                           Nom_Nou = c("df_origen", "df_edat_rang", "df_dades_municipi_2019", 
+                                       "df_coneixement_catala_1911_2011", "df_coneixement_catala_AT", 
+                                       "df_altres_llengues", "df_coneixement_cat_AT", "df_llengua_inicial_AT", 
+                                       "df_us_cat_perc", "df_inscripcions_CPNL", "df_inscripcions_nivell", 
+                                       "df_inscripcions_origen", "df_inscripcions_rest_origen", "df_parla_cat", 
+                                       "df_voluntariat", "df_sectors_retolacio", "df_sectors_oral", 
+                                       "df_ciutats_retolacio", "df_ciutats_oral", "df_LPL"))
+
+kable(taula_canvis, row.names = F, caption = "Noms dels diferents subconjunts de dades",
+      col.names = c("Descripció", "Nom antic", "Nom nou")) |>
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE,             position = "center") 
+
+```
+
+
+### Dades geogràfiques
+La informació de les dades geogràfiques [la tenim a aquest arxiu GeoJSON](https://github.com/geostarters/dades/blob/master/Municipis_Catalunya_EPSG4326_2019_simplificat.geojson). Com les visualitzacions seran creades amb Plateau i aquest software llegeix els arxius GeoJSON, no cal que els carreguem amb RStudio. 
+
+## Processament de les dades
+Quan parlem de dades de municipis, podem tractar les dades a partir del seu codi únic (`idMunicipi` en el nostre conjunt de dades), un codi que identifica inequívocament cada municipi i que ens permet unir diferents subconjunts de dades. En alguns subconjunts de dades tenim dades d'àmbits territorials o comarques. Dins de l'Excel amb totes les dades no hi ha un full on estigui establerta la relació entre municipi, comarca i àmbit territorial, així que vam haver de buscar una solució per poder trobar aquesta equivalència. Inicialment, vam fer servir Python per crear un codi senzill que fes *scrapping* d'aquestes dades (el codi emprat també es troba en aquest Github amb el nom `scrapping_dades_municipis.py`). No obstant, aquest codi ja no funciona des de l'actualització de les dades, ja que la taula que contenia aquesta informació ja no es troba al web on hi era. [Les dades es poden descarregar ara directament des de la web del projecte](https://analisi.transparenciacatalunya.cat/Societat-benestar/-catal-947-La-llengua-catalana-als-municipis-de-Ca/374c-85cu). Tot i això, com ja teníem les dades prèviament gràcies a l'*scrapping* i no hi ha diferència entre aquestes i les noves dades, utilitzarem el fitxer CSV `municipis_comarques_at.csv` que vam generar amb *scrapping* (també disponible al Github). 
+
+
+```{r}
+equiv_at_com <- read.csv("municipis_comarques_at.csv", encoding = "UTF-8")
+```
+
+Al quart full del fitxer Excel, és a dir, al nostre dataframe `df_dades_municipi_2019` tenim les dades de municipi i comarca. Aprofitant això, afegirem les dades d'àmbit territorial:
+
+```{r echo=TRUE}
+# Canviem el nom de les columnes de municipi i comarca per fer-les coincidir
+# amb les existents:
+equiv_df <- equiv_at_com |> select(-Descàrrega) |> 
+  rename(nomMunicipi = Municipi, nomComarca = Nom.comarca)
+
+
+# Fusionem ara amb les dades que teníem:
+df_dades_municipi_2019 <- left_join(df_dades_municipi_2019, equiv_df, by = c("nomMunicipi", "nomComarca"))
+df_dades_municipi_2019 <- df_dades_municipi_2019 |> 
+  relocate(Àmbit.territorial, .after = nomComarca) |> 
+  rename(nomAT = Àmbit.territorial)
+
+# Comprovem els nivells de la nova columna
+unique(df_dades_municipi_2019$nomAT)
+```
+
+Comprovem que hi ha `NA` a la nova columna. Mirem on:
+
+```{r}
+df_dades_municipi_2019[is.na(df_dades_municipi_2019$nomAT), ]
+```
+
+És una única fila que pertany al poble de Moià. A les dades originals posa que el nom de la comarca és el Bages, mentre que a les dades que hem obtingut aquest poble ja està catalogat correctament com del Moianès. Per tant, canviarem el nom de la comarca i afegirem la informació de l'àmbit territorial (*Comarques Centrals*):
+
+```{r}
+# Busquem la fila on es troba Moià:
+index_na <- which(is.na(df_dades_municipi_2019$nomAT))
+
+# Fem l'actualització de les dades:
+df_dades_municipi_2019$nomComarca[index_na] <- "Moianès"
+df_dades_municipi_2019$nomAT[index_na] <- "Comarques Centrals"
+
+# Comprovem que hem fet bé el canvi:
+unique(df_dades_municipi_2019$nomAT)
+
+```
+
+Al subconjunt que hem guardat al dataframe `df_coneixement_catala_AT` tenim les equivalències dels àmbits territorials amb els codis de cada àmbit. 
+
+```{r}
+kable(df_coneixement_cat_AT[, 1:2], row.names = F, caption = "Equivalència de l'àmbit territorial amb el codi",
+      col.names = c("Codi", "Àmbit territorial")) |>
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE, position = "center") 
+```
+
+
+
+
+
+## Arxiu lab
+Carrego les dades dels fitxers csv:
+
+```{r}
+df_con_cat <- read.csv("coneixement_catala_1991_2011_tableau.csv", encoding = "UTF-8")
+df_con_cat <- df_con_cat |> select(-X)
+df_con_cat$idMunicipi <- ifelse(substr(df_con_cat$idMunicipi, 1, 1) == "8", paste0("0",df_con_cat$idMunicipi), df_con_cat$idMunicipi)
+
+df_con_cat
+```
+
+## Hi ha relació amb l’origen dels seus habitants?
+Tenim dades d'origen dels habitants des del 2000 al 2019 al subconjunt de dades que hem anomenat com `df_origen`. Com les dades més recents de coneixement de català a nivell municipal que tenim són del 2011, filtrarem per aquest any en els dos casos i unirem les dades:
+
+```{r}
+df_ori <- df_origen |> filter(any == 2011)
+df_con_cat_2011 <- df_con_cat |> filter(any == 2011)
+df_con_ori_2011 <- left_join(df_con_cat_2011, df_ori)
+df_con_ori_2011
+```
+
+En aquest cas les dades que tenim segons origen no tenen en compte l'edat, com en el cas del coneixement de català previ on les dades es van calcular sobre la població major de 2 anys. Per tant, recalcularem els percentatges de les competències lingüístiques sobre el total de la població, que sortirà de sumar les tres columnes d'origen: `catalunya`, `restaEstat`, `estranger`. 
+
+```{r}
+# Traiem les columnes originals dels percentatges per recalcular-les
+df_con_ori_2011 <- df_con_ori_2011 |> 
+  select(-entendre_pct:-escriure_at)
+
+# Calculem el total de població:
+df_con_ori_2011 <- df_con_ori_2011 |> 
+  mutate(total = catalunya + restaEstat + estranger)
+
+# Recalculem els percentatges de cada competència:
+df_con_ori_2011 <- df_con_ori_2011 |> 
+  mutate(entendre_pct = round((entendre/total)*100, 0),
+         escriure_pct = round((escriure/total)*100, 0),
+         llegir_pct = round((llegir/total)*100, 0),
+         parlar_pct = round((parlar/total)*100, 0))
+
+# I també calculem els percentatges de població segons l'origen:
+df_con_ori_2011 <- df_con_ori_2011 |> 
+  mutate(catalunya_pct = round((catalunya/total)*100, 0),
+         estat_pct = round((restaEstat/total)*100, 0),
+         estranger_pct = round((estranger/total)*100, 0))
+         
+# Mirem el dataframe:
+df_con_ori_2011
+```
+
+Guardem aquestes dades en un fitxer CSV per analitzar-les amb Tableau:
+
+```{r}
+write.csv(df_con_ori_2011, "coneixement_catala_origen_tableau.csv")
+```
+
+Llegenda mida i color? Ratio? 
+
+•	Quin és el domini del català de la gent no nascuda a Catalunya en comparació amb els nadius? Canvia segons el seu àmbit territorial?
+
+Fer pàgina segons origen? Segons competència? En el cas anterior, es podria fer segons any i competència. 
+
+```{r}
+prova <- df_con_cat |> 
+  pivot_longer(cols = c(entendre_pct:escriure_at),
+               names_to = "competencia",
+               values_to = "percentatge") |> 
+  mutate(nivell_territorial = case_when(
+    grepl("_pct", `competencia`) ~ "Municipi",
+    grepl("_com", `competencia`) ~ "Comarca",
+    grepl("_at", `competencia`) ~ "AT",
+    TRUE ~ "Altres"
+  )) |> 
+  mutate(competencia = str_remove(`competencia`, "_.*") %>% str_to_title())
+
+write.csv(prova, "competencies_per_nivell_tableau.csv")
+
+```
+
+
+
+### coses fetes anteriorment
+
+```{r}
+# Carreguem la informació geomètrica de les comarques
+comarques <- st_read("MUC_TM_SHP_ETRS89/MUC_TM.shp")
+
+# Integrem tota la informació en una mateixa fila:
+comarques <- comarques |> group_by(CODI_INE, MUNICIPI) |> summarise(geometry = st_union(geometry))
+
+```
+
+```{r}
+# Carreguem també la informació dels àmbits territorials:
+ats_df <- read.csv("ambits.csv", skip = 3, encoding = "UTF-8")
+
+# Assignem a cada municipi el seu àmbit territorial:
+ats_df <- ats_df |> 
+  mutate(AT = if_else(Nivell == "Àmbit territorial", Codi, NA_character_)) |> 
+  fill(AT, .direction = "down") |> 
+  filter(Nivell != "Àmbit territorial") |> 
+  mutate(CODI_INE = substr(Codi, start = 1, stop = 5)) |> 
+  select(all_of(c("Nom", "AT", "CODI_INE"))) |> 
+  rename(nom = Nom)
+  
+```
+
+
+
+
+
+```{r}
+# Comencem a generar el dataframe amb les informacions rellevants:
+df_origen_rang <- left_join(df_dades_municipi_2019, df_edat_rang)
+df_origen_rang <- df_origen_rang |> mutate(CODI_INE = substr(idMunicipi, start = 1, stop = 5)) |> 
+  relocate(CODI_INE, .after = idMunicipi)
+
+df_origen_geom <- left_join(df_origen, df_dades_municipi_2019[1:5])
+df_origen_geom <- df_origen_geom |> mutate(CODI_INE = substr(idMunicipi, start = 1, stop = 5)) |> 
+  relocate(CODI_INE, .after = idMunicipi) |> fill(c(nomMunicipi, idComarca, nomComarca), .direction = "down")
+df_origen_geom <- left_join(df_origen_geom, comarques)
+
+```
+```{r}
+df_dades_municipi_2019 <- df_dades_municipi_2019 |> 
+  mutate(CODI_INE = substr(idMunicipi, start = 1, stop = 5)) |> 
+  relocate(CODI_INE, .after = idMunicipi)
+prova2 <- left_join(df_dades_municipi_2019)
+
+```
+
+
+
+
+```{r}
+ggplot() +
+  geom_sf(data = prova2, aes(fill = nomComarca, geometry = geometry)) 
+```
+
+```{r}
+comarques2 <- comarques |> group_by(CODI_INE, MUNICIPI) |> summarise(geometry = st_union(geometry))
+
+
+```
+```{r}
+prova2 <- left_join(prova, comarques2)
+ggplot() +
+  geom_sf(data = prova2, aes(fill = nomComarca, geometry = geometry)) 
+```
+
